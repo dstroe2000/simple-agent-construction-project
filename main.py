@@ -17,6 +17,7 @@ Intentions and Structure:
 #     "ollama",
 #     "pydantic",
 #     "python-dotenv",
+#     "streamlit",
 # ]
 # ///
 
