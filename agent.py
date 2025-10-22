@@ -65,7 +65,6 @@ class AIAgent:
             )
             for name, tool_info in tool_registry.items()
         ]
-        print(self.tools)
 
     def _execute_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
         """
@@ -76,7 +75,7 @@ class AIAgent:
             tool_name (str): The name of the tool to execute.
             tool_input (Dict[str, Any]): The input arguments for the tool.
         Returns:
-            str: The result of the tool execution or an error message.
+            str: The result of the tool execution or an error message (if required arguments are missing).
         """
         logging.info(f"Executing tool: {tool_name} with input: {tool_input}")
         try:
@@ -85,9 +84,11 @@ class AIAgent:
                 return f"Unknown tool: {tool_name}"
             func = tool_info["function"]
             sig = inspect.signature(func)
-            args = [tool_input[param] for param in sig.parameters]
-            #if inspect.iscoroutinefunction(func):
-            #    return await func(*args)
+            args = []
+            for param in sig.parameters:
+                if param not in tool_input:
+                    return f"Missing required argument '{param}' for tool '{tool_name}'."
+                args.append(tool_input[param])
             return func(*args)
         except Exception as e:
             logging.error(f"Error executing {tool_name}: {str(e)}")
@@ -100,7 +101,7 @@ class AIAgent:
         Args:
             user_input (str): The user's message.
         Yields:
-            str: Chunks of the assistant's response.
+            str: Chunks of the assistant's response and surfaces tool errors to the user.
         """
         logging.info(f"User input: {user_input}")
         self.messages.append({"role": "user", "content": user_input})
@@ -147,6 +148,12 @@ class AIAgent:
                                 "content": result,
                                 "tool_call_id": tool_call.get("id", "")
                             })
+                            # If result is an error, also append a user-facing message
+                            if result.startswith("Missing required argument") or result.startswith("Error executing"):
+                                self.messages.append({
+                                    "role": "assistant",
+                                    "content": result
+                                })
                         self.messages.extend(tool_results)
                         tool_call_handled = True
                 if not tool_call_handled:
