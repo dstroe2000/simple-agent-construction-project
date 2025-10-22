@@ -17,6 +17,9 @@ This project is a modular, privacy-first AI coding assistant designed for constr
 ## Important Technical Choices
 - **Local-First AI**: No data leaves your machine; complete privacy and zero API costs
 - **Modular Design**: Tools are externalized in `tools.py` and loaded via a registry for easy extension and review
+- **Async Handling**: The agent and main loop are fully async, supporting streaming responses for fast, responsive interaction.
+- **Streamlit UI**: Modern chat interface with sticky input, chat bubbles, sidebar controls, and history management.
+- **Long-Term History**: All chat history is stored in a local SQLite database (`chat_history.sqlite`) for persistence across sessions, managed via `history.py`.
 - **Configurable System Prompt**: Easily change the assistant's behavior via the `.env` file
 - **Logging**: All interactions are logged for traceability and debugging
 - **No Manual Dependency Installation**: Uses uv's inline dependencies in script headers
@@ -51,8 +54,25 @@ This project is based on and inspired by:
 - Math primitives: add, subtract, multiply, divide, sqrt, power
 - Configurable system prompt via `.env`
 - Modular tool registry for easy extension
+- Async agent and streaming responses
+- Streamlit UI with sticky input, chat bubbles, and sidebar controls
+- Long-term chat history with SQLite persistence
 - Logging to `agent.log`
 - No API costs, offline capable, and fast
+## Streamlit UI
+
+You can run the modern chat interface with:
+
+```bash
+uv run streamlit_app.py
+```
+
+Features:
+- Sticky input bar and send button
+- Chat bubbles for user and assistant
+- Sidebar with app name and history controls (reset, save, import)
+- Chat history is persistent across sessions (SQLite)
+
 
 ## License
 MIT License. See [LICENSE](LICENSE) for details.
