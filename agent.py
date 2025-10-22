@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Any
-from ollama import Client  # type: ignore
+from ollama import AsyncClient  # type: ignore
 from pydantic import BaseModel  # type: ignore
 from tools import tool_registry
 import inspect
@@ -49,9 +49,9 @@ class AIAgent:
             "You are a helpful coding assistant operating in a terminal environment. Output only plain text without markdown formatting, as your responses appear directly in the terminal. Be concise but thorough, providing clear and practical advice with a friendly tone. Don't use any asterisk characters in your responses."
         )
         if server:
-            self.client = Client(host=server)
+            self.client = AsyncClient(host=server)
         else:
-            self.client = Client()
+            self.client = AsyncClient()
         self.messages: List[Dict[str, Any]] = []
         self.tools: List[Tool] = []
         self._setup_tools()
@@ -65,10 +65,13 @@ class AIAgent:
             )
             for name, tool_info in tool_registry.items()
         ]
+        print(self.tools)
 
     def _execute_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
         """
         Execute a tool by name using the provided input.
+            - Load tool definitions from the external registry (tools.py).
+            - This enables modularity and makes it easy to add, remove, or update tools.
         Args:
             tool_name (str): The name of the tool to execute.
             tool_input (Dict[str, Any]): The input arguments for the tool.
@@ -77,29 +80,27 @@ class AIAgent:
         """
         logging.info(f"Executing tool: {tool_name} with input: {tool_input}")
         try:
-            """
-            Load tool definitions from the external registry (tools.py).
-            This enables modularity and makes it easy to add, remove, or update tools.
-            """
             tool_info = tool_registry.get(tool_name)
             if not tool_info:
                 return f"Unknown tool: {tool_name}"
             func = tool_info["function"]
             sig = inspect.signature(func)
             args = [tool_input[param] for param in sig.parameters]
+            #if inspect.iscoroutinefunction(func):
+            #    return await func(*args)
             return func(*args)
         except Exception as e:
             logging.error(f"Error executing {tool_name}: {str(e)}")
             return f"Error executing {tool_name}: {str(e)}"
 
 
-    def chat(self, user_input: str) -> str:
+    async def chat(self, user_input: str):
         """
         Handle a user message, interact with the Ollama model, and execute any requested tools.
         Args:
             user_input (str): The user's message.
-        Returns:
-            str: The assistant's response.
+        Yields:
+            str: Chunks of the assistant's response.
         """
         logging.info(f"User input: {user_input}")
         self.messages.append({"role": "user", "content": user_input})
@@ -122,33 +123,34 @@ class AIAgent:
                         "content": self.system_prompt
                     }
                 ] + self.messages
-                response = self.client.chat(
+                stream = await self.client.chat(
                     model=self.model,
                     messages=messages_with_system,
                     tools=ollama_tools,
+                    stream=True
                 )
-                message = response.get("message", {})
-                self.messages.append({
-                    "role": "assistant",
-                    "content": message.get("content", ""),
-                    "tool_calls": message.get("tool_calls", [])
-                })
-                tool_calls = message.get("tool_calls", [])
-                if tool_calls:
-                    tool_results = []
-                    for tool_call in tool_calls:
-                        function = tool_call.get("function", {})
-                        tool_name = function.get("name")
-                        tool_args = function.get("arguments", {})
-                        result = self._execute_tool(tool_name, tool_args)
-                        logging.info(f"Tool result: {result[:500]}...")
-                        tool_results.append({
-                            "role": "tool",
-                            "content": result,
-                            "tool_call_id": tool_call.get("id", "")
-                        })
-                    self.messages.extend(tool_results)
-                else:
-                    return message.get("content", "")
+                tool_call_handled = False
+                async for part in stream:
+                    message = part.get("message", {})
+                    yield message.get("content", "")
+                    tool_calls = message.get("tool_calls", [])
+                    if tool_calls:
+                        tool_results = []
+                        for tool_call in tool_calls:
+                            function = tool_call.get("function", {})
+                            tool_name = function.get("name")
+                            tool_args = function.get("arguments", {})
+                            result = self._execute_tool(tool_name, tool_args)
+                            logging.info(f"Tool result: {result[:500]}...")
+                            tool_results.append({
+                                "role": "tool",
+                                "content": result,
+                                "tool_call_id": tool_call.get("id", "")
+                            })
+                        self.messages.extend(tool_results)
+                        tool_call_handled = True
+                if not tool_call_handled:
+                    break  # Exit loop if no tool call was handled
             except Exception as e:
-                return f"Error: {str(e)}"
+                yield f"Error: {str(e)}"
+                break

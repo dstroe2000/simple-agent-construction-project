@@ -26,7 +26,7 @@ import argparse
 import logging
 from agent import AIAgent
 from dotenv import load_dotenv
-
+import asyncio
 
 # Set up logging
 logging.basicConfig(
@@ -39,7 +39,10 @@ logging.basicConfig(
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-def main():
+
+
+
+async def main():
     load_dotenv()
     endpoint = os.getenv("ENDPOINT")
     model = os.getenv("MODEL", "qwen3:4b")
@@ -80,24 +83,26 @@ def main():
             user_input = input("You: ").strip()
 
             if user_input.lower() in ["exit", "quit"]:
-                print("Goodbye!")
+                print("Goodbye!", flush=True)
                 break
 
             if not user_input:
                 continue
 
             print("\nAssistant: ", end="", flush=True)
-            response = agent.chat(user_input)
-            print(response)
+            # Only call agent.chat if not exiting
+            async for chunk in agent.chat(user_input):
+                print(chunk, end="", flush=True)
+            print()
             print()
 
         except KeyboardInterrupt:
-            print("\n\nGoodbye!")
+            print("\n\nGoodbye!", flush=True)
             break
         except Exception as e:
-            print(f"\nError: {str(e)}")
+            print(f"\nError: {str(e)}", flush=True)
             print()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
