@@ -36,10 +36,16 @@ This project is a modular, privacy-first AI coding assistant designed for constr
    ollama serve
    ollama pull qwen3:4b
    ```
-4. **Run the agent**
+4. **Run the agent in CLI**
    ```bash
    uv run main.py
    ```
+
+5. **Or you can run the modern chat interface with:**
+```bash
+uv run streamlit_app.py
+```
+
 
 ## References & Origins
 This project is based on and inspired by:
@@ -48,31 +54,24 @@ This project is based on and inspired by:
 - [Francis Beeson's implementation](https://github.com/leobeeson/single-file-ai-agent-tutorial)
 - [Thorsten Ball's tutorial](https://ampcode.com/how-to-build-an-agent)
 
-## Features
-- Conversational AI agent for coding and construction project management
-- File tools: read, list, and edit files
-- Math primitives: add, subtract, multiply, divide, sqrt, power
-- Configurable system prompt via `.env`
-- Modular tool registry for easy extension
-- Async agent and streaming responses
-- Streamlit UI with sticky input, chat bubbles, and sidebar controls
-- Long-term chat history with SQLite persistence
-- Logging to `agent.log`
-- No API costs, offline capable, and fast
-## Streamlit UI
 
-You can run the modern chat interface with:
+## Key Features
 
-```bash
-uv run streamlit_app.py
-```
+- **Local-First AI**: All data stays on your machine for complete privacy and zero API costs.
+- **Modular Design**: Easily extend and review tools via a registry in `tools.py`.
+- **Async Agent & Streaming**: Fully async agent and main loop, supporting streaming responses for fast, responsive interaction.
+- **Modern Streamlit UI**: Sticky input bar, chat bubbles, sidebar navigation, and Open WebUI-inspired look.
+- **Persistent Chat History**: All chat history is stored in a local SQLite database for long-term retention across sessions.
+- **Multi-Workspace & Multi-Chat Support**: Start new chats, switch, rename, and delete chats, with per-chat history.
+- **Configurable System Prompt**: Easily change assistant behavior via the `.env` file.
+- **Logging**: All interactions are logged for traceability and debugging.
+- **No Manual Dependency Installation**: Uses uv's inline dependencies in script headers.
+- **File Tools**: Read, list, and edit files directly from the chat interface.
+- **Math Primitives**: Add, subtract, multiply, divide, sqrt, power for construction calculations.
+- **Sidebar Controls**: App name, chat history management (reset, save, import), and navigation.
+- **Offline Capable & Fast**: No cloud APIs required; works entirely locally.
 
-Features:
-- Sticky input bar and send button
-- Chat bubbles for user and assistant
-- Sidebar with app name and history controls (reset, save, import)
-- Chat history is persistent across sessions (SQLite)
 
 
 ## License
-MIT License. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](LICENSE) for details.
