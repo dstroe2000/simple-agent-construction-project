@@ -5,6 +5,18 @@ from agent import AIAgent
 from dotenv import load_dotenv
 import os
 from streamlit_js_eval import streamlit_js_eval
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(message)s",
+    handlers=[logging.FileHandler("agent.log")]
+)
+
+# Suppress verbose HTTP logs
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 
