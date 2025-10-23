@@ -142,7 +142,7 @@ class AIAgent:
                             tool_name = function.get("name")
                             tool_args = function.get("arguments", {})
                             result = self._execute_tool(tool_name, tool_args)
-                            logging.info(f"Tool result: {result[:500]}...")
+                            logging.info(f"Tool {tool_name} result: {result[:500]}...")
                             tool_results.append({
                                 "role": "tool",
                                 "content": result,
