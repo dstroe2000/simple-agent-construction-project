@@ -1,11 +1,3 @@
-import logging
-from typing import List, Dict, Any
-from ollama import AsyncClient  # type: ignore
-from pydantic import BaseModel  # type: ignore
-from tools import tool_registry
-import inspect
-
-
 """
 AIAgent implementation for a local AI code assistant.
 
@@ -17,6 +9,16 @@ Intentions and Design:
 - All imports are placed at the top for clarity and dependency review.
 """
 
+import logging
+from typing import List, Dict, Any
+from ollama import AsyncClient  # type: ignore
+from pydantic import BaseModel  # type: ignore
+from tools import tool_registry
+import inspect
+import time
+
+
+
 class Tool(BaseModel):
     """
     Represents a callable tool for the agent, including its name, description, and input schema.
@@ -27,13 +29,54 @@ class Tool(BaseModel):
 
 
 class AIAgent:
+    async def summarize_history(self, history: list) -> str:
+        """
+        Summarize a chat history using the LLM.
+        Args:
+            history (List[Tuple[str, str]]): List of (user, assistant) message pairs.
+        Returns:
+            str: A summary of the conversation.
+        """
+        # Format the history as a string for the LLM
+        history_text = "\n".join([
+            f"User: {user}\nAssistant: {assistant}" for user, assistant in history
+        ])
+        prompt = (
+            "Summarize the following conversation between a user and an assistant. "
+            "Focus on the main topics, decisions, and any important context. "
+            "Be concise and clear.\n\n" + history_text
+        )
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that summarizes conversations."},
+            {"role": "user", "content": prompt}
+        ]
+        logging.info(f"[summarize_history] Called with {len(history)} message pairs.")
+        logging.debug(f"[summarize_history] Prompt sent to LLM:\n{prompt}")
+        start_time = time.time()
+        try:
+            response = ""
+            stream = await self.client.chat(
+                model=self.model,
+                messages=messages,
+                stream=True
+            )
+            async for part in stream:
+                message = part.get("message", {})
+                response += message.get("content", "")
+            elapsed = time.time() - start_time
+            logging.info(f"[summarize_history] LLM summary completed in {elapsed:.2f}s. Length: {len(response)} chars.")
+            logging.debug(f"[summarize_history] LLM summary output:\n{response.strip()}")
+            return response.strip()
+        except Exception as e:
+            logging.error(f"[summarize_history] Error during summarization: {str(e)}")
+            return f"[Error summarizing history: {str(e)}]"
     """
     Local AI code assistant agent.
-- The agent is designed to operate as a conversational coding assistant, with file and math tool capabilities for construction project management.
-- Tools are externalized in a registry (see tools.py) for modularity, extensibility, and easier review/testing.
-- The agent loads its available tools from the registry and can execute them based on user or model requests.
-- The system prompt is configurable via .env for flexible assistant behavior.
-- All imports are placed at the top for clarity and dependency review.
+    - The agent is designed to operate as a conversational coding assistant, with file and math tool capabilities for construction project management.
+    - Tools are externalized in a registry (see tools.py) for modularity, extensibility, and easier review/testing.
+    - The agent loads its available tools from the registry and can execute them based on user or model requests.
+    - The system prompt is configurable via .env for flexible assistant behavior.
+    - All imports are placed at the top for clarity and dependency review.
     """
     def __init__(self, model: str = "qwen3:4b", server: str = None, system_prompt: str = None):
         """
