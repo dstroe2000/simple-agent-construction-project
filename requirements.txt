@@ -1,0 +1,8 @@
+ollama
+pydantic
+python-dotenv
+streamlit
+# streamlit-js-eval is not used anymore
+
+pytest
+pytest-asyncio
