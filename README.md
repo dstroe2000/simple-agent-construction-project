@@ -24,18 +24,75 @@ This project is a modular, privacy-first AI coding assistant designed for constr
 - **Logging**: All interactions are logged for traceability and debugging
 - **No Manual Dependency Installation**: Uses uv's inline dependencies in script headers
 
+## Environment Variables (.env)
+
+Create a `.env` file in the project root to configure the assistant. The following variables are supported:
+
+- `ENDPOINT`: The URL of your local or remote Ollama server (e.g., `http://localhost:11434`).
+- `MODEL`: The default model to use (e.g., `qwen3:4b`, `qwen3:30b`).
+- `SYSTEM_PROMPT`: The system prompt that controls the assistant's behavior and tone.
+
+Example `.env`:
+```
+ENDPOINT=http://localhost:11434
+MODEL=qwen3:30b
+SYSTEM_PROMPT=You are a helpful coding assistant operating in a terminal environment. Output only plain text without markdown formatting, as your responses appear directly in the terminal. Be concise but thorough, providing clear and practical advice with a friendly tone. Don't use any asterisk characters in your responses.
+```
+
 ## Getting Started
+
+### 1. Set Up a Python Virtual Environment
+
+You can use either [uv](https://docs.astral.sh/uv/) (recommended for speed and reproducibility) or standard Python venv with requirements.txt.
+
+#### Using uv (recommended)
+```bash
+uv venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+#### Using Python venv
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+> **Note:** Always activate your virtual environment before running Streamlit or the agent.
 1. **Install uv**
    - Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
    - Windows: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
 2. **Install Ollama**
    - Linux/macOS: `curl -fsSL https://ollama.com/install.sh | sh`
    - Windows: Download from [ollama.com](https://ollama.com/download)
-3. **Start Ollama and pull the model**
-   ```bash
-   ollama serve
-   ollama pull qwen3:4b
-   ```
+3. **Ensure Ollama server is running and pull the model**
+    - Make sure the Ollama server is running on the port specified in your `.env` file (default: `http://localhost:11434`).
+    - You can check if Ollama is running with:
+       ```bash
+       curl http://localhost:11434/api/tags
+       ```
+    - If not running, start it with:
+       ```bash
+       ollama serve
+       ```
+    - Then check if the model you want to use (e.g., `qwen3:4b` or `qwen3:30b`) is already available:
+       ```bash
+       ollama list | grep qwen3:4b
+       ollama list | grep qwen3:8b
+       ollama list | grep qwen3:30b
+       ollama list | grep gpt-oss:20b
+       ```
+      If the model is not listed, pull it with:
+       ```bash
+       ollama pull qwen3:4b
+       # or
+       ollama pull qwen3:8b
+       # or
+       ollama pull qwen3:30b
+       # or
+       ollama pull gpt-oss:20b      
+       ```
 4. **Run the agent in CLI**
    ```bash
    uv run main.py
