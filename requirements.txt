@@ -2,7 +2,6 @@ ollama
 pydantic
 python-dotenv
 streamlit
-# streamlit-js-eval is not used anymore
-
+streamlit_js_eval
 pytest
 pytest-asyncio
