@@ -18,6 +18,7 @@ Key Classes:
 
 Usage:
     agent = AIAgent(model, endpoint, system_prompt, context_summary)
+    agent.set_context(context_summary, history)  # Set context and message history
     async for chunk in agent.chat(user_input):
         ...
     summary = await agent.summarize_history(history)
@@ -46,6 +47,7 @@ class Tool(BaseModel):
 
 
 class AIAgent:
+
     """
     Local AI code assistant agent (async, modular, streaming).
 
@@ -78,6 +80,27 @@ class AIAgent:
         self.messages: List[Dict[str, Any]] = []
         self.tools: List[Tool] = []
         self._setup_tools()
+
+    def set_context(self, context_summary: str, history: list):
+        """
+        Set both the context summary and message history for the agent.
+        This method should be called when switching contexts to ensure the agent's
+        persistent and short-term memory are in sync with the active context.
+        Args:
+            context_summary (str): The digital twin/context summary for the context.
+            history (List[Tuple[str, str]]): List of (user, assistant) message pairs.
+        """
+        logging.info(f"[set_context] Setting context summary (preview): {str(context_summary)[:80]}..." if context_summary else "[set_context] No context summary provided.")
+        logging.info(f"[set_context] Setting message history with {len(history)} message pairs.")
+        self.context_summary = context_summary
+        self.messages = []
+        if 0:
+            for user, assistant in history:
+                self.messages.append({"role": "user", "content": user})
+                self.messages.append({"role": "assistant", "content": assistant})
+        else:
+            # reset messages
+            self.messages = []
 
     def _setup_tools(self):
         """
