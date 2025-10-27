@@ -4,4 +4,6 @@ python-dotenv
 streamlit
 streamlit_js_eval
 pytest
+
 pytest-asyncio
+nest_asyncio
