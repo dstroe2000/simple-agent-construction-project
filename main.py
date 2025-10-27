@@ -1,15 +1,27 @@
 
+
 """
-main.py - Entry point for the Local AI Code Assistant
+main.py
+-------
+Async CLI entry point for the Local AI Code Assistant.
 
 Intentions and Structure:
-- This script launches a conversational AI agent for coding and construction project management.
+- Launches a conversational AI agent for coding and construction project management.
 - Loads configuration (endpoint, model, system prompt) from a .env file for flexibility.
 - Uses argparse for command-line overrides of model and endpoint.
 - Handles user interaction loop, printing responses and managing session.
 - All imports are placed at the top for clarity and review.
 - Logging is set up for both file and console output, and verbose HTTP logs are suppressed.
 - The agent logic is separated into agent.py for modularity.
+
+Features:
+- Async event loop for streaming LLM responses.
+- Supports digital twin/context summary injection (if provided).
+- Clean exit on KeyboardInterrupt or 'exit'/'quit' commands.
+
+Usage:
+    uv run main.py
+    python main.py --model qwen3:30b --server http://localhost:11434
 """
 # /// script
 # requires-python = ">=3.12"
@@ -33,17 +45,19 @@ import asyncio
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
-    handlers=[logging.FileHandler("agent.log")]
+    handlers=[logging.FileHandler("agent.log"), logging.StreamHandler(sys.stdout)]
 )
 
 # Suppress verbose HTTP logs
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-
-
-
 async def main():
+    """
+    Main async entry point for the CLI agent.
+    Loads configuration, parses arguments, and runs the user interaction loop.
+    Handles streaming responses and clean exit.
+    """
     load_dotenv()
     endpoint = os.getenv("ENDPOINT")
     model = os.getenv("MODEL", "qwen3:4b")
@@ -106,4 +120,7 @@ async def main():
 
 
 if __name__ == "__main__":
+    """
+    CLI entry point. Runs the async main() function.
+    """
     asyncio.run(main())
