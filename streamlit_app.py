@@ -26,12 +26,11 @@ load_dotenv()
 endpoint = os.getenv("ENDPOINT")
 
 
-# Initialize agent in session_state for persistence across reruns
+
+# Always create a new agent instance on each rerun to avoid event loop issues
 model = os.getenv("MODEL", "qwen3:4b")
 system_prompt = os.getenv("SYSTEM_PROMPT")
-if "agent" not in st.session_state:
-    st.session_state["agent"] = AIAgent(model, endpoint, system_prompt)
-agent = st.session_state["agent"]
+agent = AIAgent(model, endpoint, system_prompt)
 
 
 
@@ -48,10 +47,7 @@ if "chats" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state["history"] = history_db.load_history(st.session_state["chat_id"])
 
-# After chat_id is set, retrieve and inject context summary if it exists
-current_context_summary = history_db.get_context_summary(st.session_state["chat_id"])
-if current_context_summary:
-    agent.context_summary = current_context_summary
+
 
 
 
@@ -84,11 +80,13 @@ with st.sidebar:
             if selected:
                 new_name = st.text_input("Rename chat", value=chat_name, key=f"rename_{chat_id}")
                 if new_name != chat_name:
+                    logging.info(f"[UI] User renamed chat {chat_id} from '{chat_name}' to '{new_name[:64]}'")
                     history_db.rename_chat(chat_id, new_name[:64])
                     st.session_state["chats"] = history_db.list_chats()
                     st.rerun()
             else:
                 if st.button(f"🗂️ {chat_name}", key=f"select_{chat_id}", help="Select chat", use_container_width=True):
+                    logging.info(f"[UI] User switched to chat {chat_id} ('{chat_name}')")
                     # --- BEGIN: Save current workspace context before switching ---
                     # Before switching to a new workspace, summarize and persist the current chat's context.
                     current_chat_id = st.session_state["chat_id"]
@@ -106,16 +104,18 @@ with st.sidebar:
                     # Now switch to the new workspace
                     st.session_state["chat_id"] = chat_id
                     st.session_state["history"] = history_db.load_history(chat_id)
-                    # --- BEGIN: Inject new workspace context summary into agent ---
+                    # --- BEGIN: Inject new workspace context summary and history into agent ---
                     new_context = history_db.get_context_summary(chat_id)
-                    agent.context_summary = new_context
-                    # --- END: Inject new workspace context summary into agent ---
+                    new_history = st.session_state.get("history", [])
+                    agent.set_context(new_context, new_history)
+                    # --- END: Inject new workspace context summary and history into agent ---
                     # --- Clear chat input bar on workspace switch ---
                     st.session_state["user_input_modern"] = ""
                     st.query_params.clear()
                     st.rerun()
         with col2:
             if st.button("🗑️", key=f"delete_{chat_id}", help="Delete chat", use_container_width=True):
+                logging.info(f"[UI] User deleted chat {chat_id} ('{chat_name}')")
                 history_db.delete_chat(chat_id)
                 st.session_state["chats"] = history_db.list_chats()
                 # If deleted current chat, switch to another
@@ -127,9 +127,11 @@ with st.sidebar:
                 st.rerun()
         with col3:
             st.write("")
+
     # Handle new chat and delete chat
     query_params = st.query_params
     if "chat_id" in query_params:
+        logging.info(f"[UI] User switched chat via query param to chat_id={query_params['chat_id'][0]}")
         new_chat_id = int(query_params["chat_id"][0])
         # --- BEGIN: Save current workspace context before switching (query param) ---
         current_chat_id = st.session_state["chat_id"]
@@ -143,15 +145,18 @@ with st.sidebar:
         # --- END: Save current workspace context before switching (query param) ---
         st.session_state["chat_id"] = new_chat_id
         st.session_state["history"] = history_db.load_history(new_chat_id)
-        # --- BEGIN: Inject new workspace context summary into agent ---
+        # --- BEGIN: Inject new workspace context summary and history into agent ---
         new_context = history_db.get_context_summary(new_chat_id)
-        agent.context_summary = new_context
-        # --- END: Inject new workspace context summary into agent ---
+        new_history = st.session_state.get("history", [])
+        agent.set_context(new_context, new_history)
+        # --- END: Inject new workspace context summary and history into agent ---
         # --- Clear chat input bar on workspace switch ---
         st.session_state["user_input_modern"] = ""
         st.query_params.clear()
         st.rerun()
+
     if "delete_chat" in query_params:
+        logging.info(f"[UI] User deleted chat via query param: chat_id={query_params['delete_chat'][0]}")
         del_id = int(query_params["delete_chat"][0])
         history_db.delete_chat(del_id)
         st.session_state["chats"] = history_db.list_chats()
@@ -162,8 +167,12 @@ with st.sidebar:
             st.session_state["history"] = history_db.load_history(st.session_state["chat_id"])
         st.query_params.clear()
         st.rerun()
+
     # New chat button
     if st.button("➕ New Chat", key="new_chat_btn_sidebar"):
+        # Set context for new chat (empty context and history)
+        agent.set_context(None, [])
+        logging.info(f"[UI] User created a new chat")
         new_id = history_db.create_chat("")  # Empty name for now
         st.session_state["chats"] = history_db.list_chats()
         st.session_state["chat_id"] = new_id
@@ -284,8 +293,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 model = os.getenv("MODEL", "qwen3:4b")
 system_prompt = os.getenv("SYSTEM_PROMPT")
 
-# Initialize agent
-agent = AIAgent(model, endpoint, system_prompt)
+
 
 
 if "history" not in st.session_state:
@@ -373,14 +381,26 @@ with colSend:
 st.markdown('</div>', unsafe_allow_html=True)
 
 if send_clicked and user_input.strip():
-    # Set flag to clear input on next rerun
+    logging.info(f"[UI] User sent a message in chat {st.session_state['chat_id']}: '{user_input[:80]}'")
     st.session_state["clear_input"] = True
     async def get_response():
         response = ""
         async for chunk in agent.chat(user_input):
             response += chunk
         return response
-    response = asyncio.run(get_response())
+    try:
+        loop = asyncio.get_running_loop()
+        if loop.is_closed():
+            raise RuntimeError
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    try:
+        import nest_asyncio
+        nest_asyncio.apply()
+    except ImportError:
+        raise RuntimeError("nest_asyncio is required for async support in Streamlit. Please install it with 'pip install nest_asyncio'.")
+    response = loop.run_until_complete(get_response())
     st.session_state["history"].append((user_input, response))
     history_db.add_to_history(st.session_state["chat_id"], user_input, response)
     # If this is the first message in a new chat, set chat name to user_input
