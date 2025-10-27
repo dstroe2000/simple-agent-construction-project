@@ -1,6 +1,8 @@
 
 """
-tools.py - Tool implementations and registry for the Local AI Code Assistant
+tools.py
+--------
+Tool implementations and registry for the Local AI Code Assistant.
 
 Intentions and Structure:
 - Contains all tool functions (math and file operations) used by the agent.
@@ -10,6 +12,26 @@ Intentions and Structure:
 - The tool_registry dictionary maps tool names to their function, input schema, and description.
 - This registry is loaded by the agent for modularity and extensibility.
 - All imports are placed at the top for clarity and review.
+
+Features:
+- Easily extensible: add new tools by defining a function and adding an entry to tool_registry.
+- All tools are described with input schemas for LLM function calling.
+- Used by both CLI and Streamlit UI via agent.py.
+
+Usage:
+    from tools import tool_registry
+    tool = tool_registry["add"]
+    result = tool["function"](a=2, b=3)
+
+Registry Structure:
+    {
+        "tool_name": {
+            "function": <callable>,
+            "input_schema": <dict>,
+            "description": <str>
+        },
+        ...
+    }
 """
 import math
 from typing import Dict, Any
