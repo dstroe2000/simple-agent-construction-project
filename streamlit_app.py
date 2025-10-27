@@ -26,6 +26,14 @@ load_dotenv()
 endpoint = os.getenv("ENDPOINT")
 
 
+# Initialize agent in session_state for persistence across reruns
+model = os.getenv("MODEL", "qwen3:4b")
+system_prompt = os.getenv("SYSTEM_PROMPT")
+if "agent" not in st.session_state:
+    st.session_state["agent"] = AIAgent(model, endpoint, system_prompt)
+agent = st.session_state["agent"]
+
+
 
 # Initialize ChatHistoryDB and chat state
 history_db = ChatHistoryDB()
@@ -39,6 +47,13 @@ if "chats" not in st.session_state:
     st.session_state["chats"] = history_db.list_chats()
 if "history" not in st.session_state:
     st.session_state["history"] = history_db.load_history(st.session_state["chat_id"])
+
+# After chat_id is set, retrieve and inject context summary if it exists
+current_context_summary = history_db.get_context_summary(st.session_state["chat_id"])
+if current_context_summary:
+    agent.context_summary = current_context_summary
+
+
 
 
 
@@ -74,8 +89,30 @@ with st.sidebar:
                     st.rerun()
             else:
                 if st.button(f"🗂️ {chat_name}", key=f"select_{chat_id}", help="Select chat", use_container_width=True):
+                    # --- BEGIN: Save current workspace context before switching ---
+                    # Before switching to a new workspace, summarize and persist the current chat's context.
+                    current_chat_id = st.session_state["chat_id"]
+                    current_history = st.session_state.get("history", [])
+                    if current_history:
+                        # Summarize/compress the current chat history using the agent
+                        # (agent.summarize_history is assumed to be async)
+                        try:
+                            summary = asyncio.run(agent.summarize_history(current_history))
+                            # Save the summary to the database for the current workspace
+                            history_db.set_context_summary(current_chat_id, summary)
+                        except Exception as e:
+                            logging.error(f"Failed to summarize and save context: {e}")
+                    # --- END: Save current workspace context before switching ---
+                    # Now switch to the new workspace
                     st.session_state["chat_id"] = chat_id
                     st.session_state["history"] = history_db.load_history(chat_id)
+                    # --- BEGIN: Inject new workspace context summary into agent ---
+                    new_context = history_db.get_context_summary(chat_id)
+                    agent.context_summary = new_context
+                    # --- END: Inject new workspace context summary into agent ---
+                    # --- Clear chat input bar on workspace switch ---
+                    st.session_state["user_input_modern"] = ""
+                    st.query_params.clear()
                     st.rerun()
         with col2:
             if st.button("🗑️", key=f"delete_{chat_id}", help="Delete chat", use_container_width=True):
@@ -86,6 +123,7 @@ with st.sidebar:
                     chats = st.session_state["chats"]
                     st.session_state["chat_id"] = chats[0][0] if chats else history_db.create_chat("")
                     st.session_state["history"] = history_db.load_history(st.session_state["chat_id"])
+                st.query_params.clear()
                 st.rerun()
         with col3:
             st.write("")
@@ -93,8 +131,24 @@ with st.sidebar:
     query_params = st.query_params
     if "chat_id" in query_params:
         new_chat_id = int(query_params["chat_id"][0])
+        # --- BEGIN: Save current workspace context before switching (query param) ---
+        current_chat_id = st.session_state["chat_id"]
+        current_history = st.session_state.get("history", [])
+        if current_history:
+            try:
+                summary = asyncio.run(agent.summarize_history(current_history))
+                history_db.set_context_summary(current_chat_id, summary)
+            except Exception as e:
+                logging.error(f"Failed to summarize and save context: {e}")
+        # --- END: Save current workspace context before switching (query param) ---
         st.session_state["chat_id"] = new_chat_id
         st.session_state["history"] = history_db.load_history(new_chat_id)
+        # --- BEGIN: Inject new workspace context summary into agent ---
+        new_context = history_db.get_context_summary(new_chat_id)
+        agent.context_summary = new_context
+        # --- END: Inject new workspace context summary into agent ---
+        # --- Clear chat input bar on workspace switch ---
+        st.session_state["user_input_modern"] = ""
         st.query_params.clear()
         st.rerun()
     if "delete_chat" in query_params:
