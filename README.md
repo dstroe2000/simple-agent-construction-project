@@ -4,6 +4,15 @@
 ## Project Purpose
 This project is a modular, privacy-first AI coding assistant designed for construction project management and general coding tasks. It builds on the local-first AI philosophy, running entirely on your machine with no cloud APIs or external dependencies. The agent can read, list, and edit files, and perform essential math operations for sizing and calculations in construction workflows.
 
+## What Makes This Special
+
+- **Privacy-First Architecture**: 100% local execution with no cloud dependencies - your construction data never leaves your machine
+- **Digital Twin Memory**: Each workspace maintains an intelligent context summary, giving the AI long-term understanding of your projects without loading full conversation history
+- **Construction-Focused**: Built-in mathematical tools specifically designed for engineering calculations (stability analysis, material sizing, etc.)
+- **True Multi-Workspace**: Isolated project contexts with independent memory - switch between different construction projects seamlessly
+- **Extensible by Design**: Registry-based tool system lets you add domain-specific tools without modifying core agent code
+- **Dual Interface**: Choose between lightweight CLI or modern web UI depending on your workflow
+
 ## Prerequisites
 - **Ollama**: Download from [ollama.com](https://ollama.com) to run local LLMs (e.g., qwen3:4b)
 - **qwen3:4b model**: Efficient 4B parameter model (auto-downloaded by Ollama)
@@ -114,19 +123,19 @@ This project is based on and inspired by:
 
 ## Key Features
 
-- **Local-First AI**: All data stays on your machine for complete privacy and zero API costs.
-- **Modular Design**: Easily extend and review tools via a registry in `tools.py`.
-- **Async Agent & Streaming**: Fully async agent and main loop, supporting streaming responses for fast, responsive interaction.
-- **Modern Streamlit UI**: Sticky input bar, chat bubbles, sidebar navigation, and Open WebUI-inspired look.
-- **Persistent Chat History**: All chat history is stored in a local SQLite database for long-term retention across sessions.
-- **Multi-Workspace & Multi-Chat Support**: Start new chats, switch, rename, and delete chats, with per-chat history.
-- **Configurable System Prompt**: Easily change assistant behavior via the `.env` file.
-- **Logging**: All interactions are logged for traceability and debugging.
-- **No Manual Dependency Installation**: Uses uv's inline dependencies in script headers.
-- **File Tools**: Read, list, and edit files directly from the chat interface.
-- **Math Primitives**: Add, subtract, multiply, divide, sqrt, power for construction calculations.
-- **Sidebar Controls**: App name, chat history management (reset, save, import), and navigation.
-- **Offline Capable & Fast**: No cloud APIs required; works entirely locally.
+### Core Capabilities
+- **File Operations**: Read, list, and edit files directly from the chat interface
+- **Math Tools**: Add, subtract, multiply, divide, sqrt, power for construction calculations
+- **Persistent History**: SQLite database stores all conversations for long-term retention across sessions
+- **Context Summaries**: Automatic workspace summarization for efficient memory management
+
+### Technical Highlights
+- **Async Architecture**: Fully async agent and streaming responses for real-time interaction
+- **Modern Streamlit UI**: Chat bubbles, sticky input bar, sidebar navigation, and workspace management
+- **Workspace Operations**: Create, switch, rename, and delete workspaces with independent contexts
+- **Configurable Behavior**: Customize system prompt, model, and endpoint via `.env` file
+- **Comprehensive Logging**: All interactions logged for traceability and debugging
+- **Zero Setup Friction**: Uses uv for dependency management with inline script headers
 
 
 
